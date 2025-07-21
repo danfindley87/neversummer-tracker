@@ -58,11 +58,20 @@
       font-size: 14px;
       font-family: Arial, sans-serif;
       z-index: 999;
+      width: 200px;
     }
     #radarControls button {
       margin-top: 4px;
       display: block;
       width: 100%;
+    }
+    #radarStrength {
+      width: 100%;
+    }
+    #radarStrengthLabel {
+      font-size: 12px;
+      display: block;
+      margin-top: 4px;
     }
   </style>
 </head>
@@ -79,7 +88,11 @@
       <div id="estFinish">Est Finish: --</div>
     </div>
     <div id="radarControls">
-      <input type="checkbox" id="toggleRadar"> Weather Radar (High Contrast) 🌧 <br>
+      <input type="checkbox" id="toggleRadar"> Weather Radar 🌧 <br>
+      <label id="radarStrengthLabel" for="radarStrength">
+        Radar Strength: <span id="radarStrengthValue">3x</span>
+      </label>
+      <input type="range" id="radarStrength" min="1" max="10" value="3">
       <button id="refreshRadar">🔄 Refresh Radar</button>
       <button id="zoomRunner">🔍 Zoom to Runner</button>
       <button id="zoomCourse">🗺️ Zoom to Course</button>
@@ -141,6 +154,9 @@
     let startTime = null;
 
     let lastUpdateData = { mile: 0, time: null };
+
+    // Radar Strength
+    let radarStrength = 3; // Default
 
     map.on('load', () => {
       initCourse();
@@ -324,26 +340,30 @@
 
     // Radar
     function addRadarLayer() {
-  if (map.getSource('radar-layer')) return;
-  for (let i = 0; i < 2; i++) { // add two layers
-    const layerId = `radar-layer-${i}`;
-    map.addSource(layerId, {
-      type: 'raster',
-      tiles: [`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`],
-      tileSize: 256
-    });
-    map.addLayer({
-      id: layerId,
-      type: 'raster',
-      source: layerId,
-      paint: { 'raster-opacity': 1.0 }
-    });
-  }
-}
+      for (let i = 0; i < radarStrength; i++) {
+        const layerId = `radar-layer-${i}`;
+        if (!map.getSource(layerId)) {
+          map.addSource(layerId, {
+            type: 'raster',
+            tiles: [`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`],
+            tileSize: 256
+          });
+          map.addLayer({
+            id: layerId,
+            type: 'raster',
+            source: layerId,
+            paint: { 'raster-opacity': 1.0 }
+          });
+        }
+      }
+    }
 
     function removeRadarLayer() {
-      if (map.getLayer('radar-layer')) map.removeLayer('radar-layer');
-      if (map.getSource('radar-layer')) map.removeSource('radar-layer');
+      for (let i = 0; i < 10; i++) { // max layers
+        const layerId = `radar-layer-${i}`;
+        if (map.getLayer(layerId)) map.removeLayer(layerId);
+        if (map.getSource(layerId)) map.removeSource(layerId);
+      }
     }
 
     function setupRadarControls() {
@@ -354,6 +374,14 @@
       document.getElementById('refreshRadar').addEventListener('click', () => {
         removeRadarLayer();
         addRadarLayer();
+      });
+      document.getElementById('radarStrength').addEventListener('input', e => {
+        radarStrength = parseInt(e.target.value, 10);
+        document.getElementById('radarStrengthValue').textContent = radarStrength + 'x';
+        if (document.getElementById('toggleRadar').checked) {
+          removeRadarLayer();
+          addRadarLayer();
+        }
       });
     }
 
