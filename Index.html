@@ -88,7 +88,7 @@
       <div id="estFinish">Est Finish: --</div>
     </div>
     <div id="radarControls">
-      <input type="checkbox" id="toggleRadar"> Weather Radar 🌧 <br>
+      <input type="checkbox" id="toggleRadar" checked> Weather Radar 🌧 <br>
       <label id="radarStrengthLabel" for="radarStrength">
         Radar Strength: <span id="radarStrengthValue">10x</span>
       </label>
@@ -250,7 +250,7 @@
       const [lng, lat] = coursePoints[simIndex];
       liveMarker.setLngLat([lng, lat]);
       updateElevationMarker(lng, lat, new Date());
-      simIndex += Math.floor(Math.random() * 4 + 2); // random pace 2-5 steps
+      simIndex += Math.floor(Math.random() * 4 + 2);
     }
 
     function updateElevationMarker(lng, lat, timestamp) {
@@ -285,7 +285,6 @@
       document.getElementById('remain').textContent = remainMiles;
       document.getElementById('climbInfo').textContent = `Climbed: ${climbedFt} ft | To Go: ${climbRemaining} ft`;
 
-      // Current Pace
       if (lastUpdateData.time && timestamp) {
         const timeDiff = (timestamp - lastUpdateData.time) / 60000;
         const distDiff = currentMile - lastUpdateData.mile;
@@ -298,7 +297,6 @@
         }
       }
 
-      // Average Pace & Estimated Finish
       const elapsedMinutes = (timestamp - startTime) / 60000;
       if (currentMile > 0) {
         const avgPace = elapsedMinutes / currentMile;
@@ -359,9 +357,9 @@
       }
     }
 
-    function updateRadarVisibility() {
+    function updateRadarVisibility(isVisible = true) {
       for (let i = 0; i < maxRadarLayers; i++) {
-        const visibility = i < radarStrength ? 'visible' : 'none';
+        const visibility = (isVisible && i < radarStrength) ? 'visible' : 'none';
         if (map.getLayer(`radar-layer-${i}`)) {
           map.setLayoutProperty(`radar-layer-${i}`, 'visibility', visibility);
         }
@@ -369,16 +367,14 @@
     }
 
     function setupRadarControls() {
-      document.getElementById('toggleRadar').addEventListener('change', e => {
-        const visibility = e.target.checked ? 'visible' : 'none';
-        for (let i = 0; i < maxRadarLayers; i++) {
-          if (map.getLayer(`radar-layer-${i}`)) {
-            map.setLayoutProperty(`radar-layer-${i}`, 'visibility', visibility);
-          }
-        }
+      const radarToggle = document.getElementById('toggleRadar');
+      radarToggle.checked = true; // ensure checked on load
+
+      radarToggle.addEventListener('change', e => {
+        updateRadarVisibility(e.target.checked);
       });
+
       document.getElementById('refreshRadar').addEventListener('click', () => {
-        // Refresh all radar layers
         for (let i = 0; i < maxRadarLayers; i++) {
           const src = map.getSource(`radar-layer-${i}`);
           if (src) {
@@ -387,16 +383,13 @@
           }
         }
         preloadRadarLayers();
-        if (!document.getElementById('toggleRadar').checked) {
-          for (let i = 0; i < maxRadarLayers; i++) {
-            map.setLayoutProperty(`radar-layer-${i}`, 'visibility', 'none');
-          }
-        }
+        if (!radarToggle.checked) updateRadarVisibility(false);
       });
+
       document.getElementById('radarStrength').addEventListener('input', e => {
         radarStrength = parseInt(e.target.value, 10);
         document.getElementById('radarStrengthValue').textContent = radarStrength + 'x';
-        updateRadarVisibility();
+        updateRadarVisibility(radarToggle.checked);
       });
     }
 
