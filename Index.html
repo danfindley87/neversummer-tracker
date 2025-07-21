@@ -324,19 +324,22 @@
 
     // Radar
     function addRadarLayer() {
-      if (map.getSource('radar-layer')) return;
-      map.addSource('radar-layer', {
-        type: 'raster',
-        tiles: [`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`],
-        tileSize: 256
-      });
-      map.addLayer({
-        id: 'radar-layer',
-        type: 'raster',
-        source: 'radar-layer',
-        paint: { 'raster-opacity': 0.95 } // Higher opacity for visibility
-      });
-    }
+  if (map.getSource('radar-layer')) return;
+  for (let i = 0; i < 2; i++) { // add two layers
+    const layerId = `radar-layer-${i}`;
+    map.addSource(layerId, {
+      type: 'raster',
+      tiles: [`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`],
+      tileSize: 256
+    });
+    map.addLayer({
+      id: layerId,
+      type: 'raster',
+      source: layerId,
+      paint: { 'raster-opacity': 1.0 }
+    });
+  }
+}
 
     function removeRadarLayer() {
       if (map.getLayer('radar-layer')) map.removeLayer('radar-layer');
