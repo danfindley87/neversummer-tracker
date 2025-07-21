@@ -43,7 +43,7 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
       z-index: 999;
     }
-    #lastUpdate, #currentPace, #climbInfo {
+    #lastUpdate, #currentPace, #averagePace, #estFinish, #climbInfo {
       font-size: 12px;
       margin-top: 4px;
       color: #333;
@@ -75,9 +75,11 @@
       <div id="climbInfo">Climbed: 0 ft | To Go: 0 ft</div>
       <div id="lastUpdate">Location last updated: waiting...</div>
       <div id="currentPace">Current Pace: --</div>
+      <div id="averagePace">Avg Pace: --</div>
+      <div id="estFinish">Est Finish: --</div>
     </div>
     <div id="radarControls">
-      <input type="checkbox" id="toggleRadar"> Show Radar <br>
+      <input type="checkbox" id="toggleRadar"> Weather Radar (High Contrast) 🌧 <br>
       <button id="refreshRadar">🔄 Refresh Radar</button>
       <button id="zoomRunner">🔍 Zoom to Runner</button>
       <button id="zoomCourse">🗺️ Zoom to Course</button>
@@ -136,6 +138,7 @@
     let totalClimb = 0;
     const liveMarker = new mapboxgl.Marker({ element: createCustomMarker('🏃‍♂️', 'black', true) });
     let courseBounds;
+    let startTime = null;
 
     let lastUpdateData = { mile: 0, time: null };
 
@@ -229,10 +232,12 @@
       const [lng, lat] = coursePoints[simIndex];
       liveMarker.setLngLat([lng, lat]);
       updateElevationMarker(lng, lat, new Date());
-      simIndex += Math.floor(Math.random() * 4 + 2); // random pace between 2-5 steps
+      simIndex += Math.floor(Math.random() * 4 + 2); // random pace 2-5 steps
     }
 
     function updateElevationMarker(lng, lat, timestamp) {
+      if (!startTime) startTime = timestamp;
+
       let minDist = Infinity;
       let closestIndex = 0;
       for (let i = 0; i < coursePoints.length; i++) {
@@ -262,6 +267,7 @@
       document.getElementById('remain').textContent = remainMiles;
       document.getElementById('climbInfo').textContent = `Climbed: ${climbedFt} ft | To Go: ${climbRemaining} ft`;
 
+      // Current Pace
       if (lastUpdateData.time && timestamp) {
         const timeDiff = (timestamp - lastUpdateData.time) / 60000;
         const distDiff = currentMile - lastUpdateData.mile;
@@ -274,11 +280,24 @@
         }
       }
 
-      lastUpdateData = { mile: currentMile, time: timestamp };
-      if (timestamp) {
-        document.getElementById('lastUpdate').textContent = 
-          "Location last updated: " + timestamp.toLocaleTimeString();
+      // Average Pace & Estimated Finish
+      const elapsedMinutes = (timestamp - startTime) / 60000;
+      if (currentMile > 0) {
+        const avgPace = elapsedMinutes / currentMile;
+        const avgMin = Math.floor(avgPace);
+        const avgSec = Math.floor((avgPace - avgMin) * 60);
+        document.getElementById('averagePace').textContent =
+          `Avg Pace: ${avgMin}:${avgSec.toString().padStart(2, '0')} min/mi`;
+
+        const estFinishMinutes = avgPace * (totalMiles - currentMile);
+        const finishTime = new Date(timestamp.getTime() + estFinishMinutes * 60000);
+        document.getElementById('estFinish').textContent =
+          `Est Finish: ${finishTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
       }
+
+      lastUpdateData = { mile: currentMile, time: timestamp };
+      document.getElementById('lastUpdate').textContent =
+        "Location last updated: " + timestamp.toLocaleTimeString();
 
       elevationChart.data.datasets[1] = {
         label: 'Current Position',
@@ -303,6 +322,7 @@
       return Math.sqrt(x * x + y * y) * R;
     }
 
+    // Radar
     function addRadarLayer() {
       if (map.getSource('radar-layer')) return;
       map.addSource('radar-layer', {
@@ -314,7 +334,7 @@
         id: 'radar-layer',
         type: 'raster',
         source: 'radar-layer',
-        paint: { 'raster-opacity': 0.7 }
+        paint: { 'raster-opacity': 0.95 } // Higher opacity for visibility
       });
     }
 
