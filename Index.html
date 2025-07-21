@@ -90,9 +90,9 @@
     <div id="radarControls">
       <input type="checkbox" id="toggleRadar"> Weather Radar 🌧 <br>
       <label id="radarStrengthLabel" for="radarStrength">
-        Radar Strength: <span id="radarStrengthValue">3x</span>
+        Radar Strength: <span id="radarStrengthValue">10x</span>
       </label>
-      <input type="range" id="radarStrength" min="1" max="10" value="3">
+      <input type="range" id="radarStrength" min="1" max="20" value="10">
       <button id="refreshRadar">🔄 Refresh Radar</button>
       <button id="zoomRunner">🔍 Zoom to Runner</button>
       <button id="zoomCourse">🗺️ Zoom to Course</button>
@@ -156,10 +156,12 @@
     let lastUpdateData = { mile: 0, time: null };
 
     // Radar Strength
-    let radarStrength = 3; // Default
+    let radarStrength = 10; // Default
+    const maxRadarLayers = 20; // Always preload 20
 
     map.on('load', () => {
       initCourse();
+      preloadRadarLayers();
       setupRadarControls();
       setupZoomControls();
     });
@@ -338,50 +340,63 @@
       return Math.sqrt(x * x + y * y) * R;
     }
 
-    // Radar
-    function addRadarLayer() {
-      for (let i = 0; i < radarStrength; i++) {
+    // Radar Preload
+    function preloadRadarLayers() {
+      for (let i = 0; i < maxRadarLayers; i++) {
         const layerId = `radar-layer-${i}`;
-        if (!map.getSource(layerId)) {
-          map.addSource(layerId, {
-            type: 'raster',
-            tiles: [`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`],
-            tileSize: 256
-          });
-          map.addLayer({
-            id: layerId,
-            type: 'raster',
-            source: layerId,
-            paint: { 'raster-opacity': 1.0 }
-          });
-        }
+        map.addSource(layerId, {
+          type: 'raster',
+          tiles: [`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`],
+          tileSize: 256
+        });
+        map.addLayer({
+          id: layerId,
+          type: 'raster',
+          source: layerId,
+          paint: { 'raster-opacity': 1.0 },
+          layout: { visibility: i < radarStrength ? 'visible' : 'none' }
+        });
       }
     }
 
-    function removeRadarLayer() {
-      for (let i = 0; i < 10; i++) { // max layers
-        const layerId = `radar-layer-${i}`;
-        if (map.getLayer(layerId)) map.removeLayer(layerId);
-        if (map.getSource(layerId)) map.removeSource(layerId);
+    function updateRadarVisibility() {
+      for (let i = 0; i < maxRadarLayers; i++) {
+        const visibility = i < radarStrength ? 'visible' : 'none';
+        if (map.getLayer(`radar-layer-${i}`)) {
+          map.setLayoutProperty(`radar-layer-${i}`, 'visibility', visibility);
+        }
       }
     }
 
     function setupRadarControls() {
       document.getElementById('toggleRadar').addEventListener('change', e => {
-        if (e.target.checked) addRadarLayer();
-        else removeRadarLayer();
+        const visibility = e.target.checked ? 'visible' : 'none';
+        for (let i = 0; i < maxRadarLayers; i++) {
+          if (map.getLayer(`radar-layer-${i}`)) {
+            map.setLayoutProperty(`radar-layer-${i}`, 'visibility', visibility);
+          }
+        }
       });
       document.getElementById('refreshRadar').addEventListener('click', () => {
-        removeRadarLayer();
-        addRadarLayer();
+        // Refresh all radar layers
+        for (let i = 0; i < maxRadarLayers; i++) {
+          const src = map.getSource(`radar-layer-${i}`);
+          if (src) {
+            map.removeLayer(`radar-layer-${i}`);
+            map.removeSource(`radar-layer-${i}`);
+          }
+        }
+        preloadRadarLayers();
+        if (!document.getElementById('toggleRadar').checked) {
+          for (let i = 0; i < maxRadarLayers; i++) {
+            map.setLayoutProperty(`radar-layer-${i}`, 'visibility', 'none');
+          }
+        }
       });
       document.getElementById('radarStrength').addEventListener('input', e => {
         radarStrength = parseInt(e.target.value, 10);
         document.getElementById('radarStrengthValue').textContent = radarStrength + 'x';
-        if (document.getElementById('toggleRadar').checked) {
-          removeRadarLayer();
-          addRadarLayer();
-        }
+        updateRadarVisibility();
       });
     }
 
