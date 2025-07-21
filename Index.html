@@ -85,16 +85,14 @@
     const liveMarker = new mapboxgl.Marker({ color: 'red' });
 
     const aidStations = [
-      { name: "Michigan Ditch (mile 11.4)", coords: [-105.8797, 40.4975] },
-      { name: "Diamond Aid (mile 19.5)", coords: [-105.921469, 40.505442] },
-      { name: "Montgomery (mile 25.5)", coords: [-105.921469, 40.505442] },
-      { name: "Ruby Jewel Aid (mile 31.6)", coords: [-105.914, 40.513] },
-      { name: "Kelly Lake (mile 36.3)", coords: [-105.914, 40.513] },
-      { name: "Clear Lake 1 (40.9)", coords: [-105.95, 40.542] },
-      { name: "Clear Lake 2 (45.3)", coords: [-105.95, 40.542] },
-      { name: "Canadian Aid (mile 51.5)", coords: [-105.971943, 40.559134] },
-      { name: "Bockman Aid (mile 57.4)", coords: [-105.971943, 40.559134] },
-      { name: "Ranger Lakes Aid (63.6)", coords: [-105.97, 40.57] }
+      { name: "Michigan Ditch (mile 11.4)", coords: [-105.8797, 40.4975], mile: 11.4 },
+      { name: "Diamond Aid (mile 19.5)", coords: [-105.9081, 40.5039], mile: 19.5 },
+      { name: "Montgomery (mile 25.5)", coords: [-105.9139, 40.5542], mile: 25.5 },
+      { name: "Ruby Jewel Aid (mile 31.6)", coords: [-105.9633, 40.5842], mile: 31.6 },
+      { name: "Clear Lake 1&2 (40.9 & 45.3)", coords: [-106.0022, 40.6553], mile: 40.9 },
+      { name: "Canadian Aid (mile 51.5)", coords: [-106.0081, 40.6147], mile: 51.5 },
+      { name: "Bockman Aid (mile 57.4)", coords: [-105.9717, 40.5592], mile: 57.4 },
+      { name: "Ranger Lakes Aid (63.6)", coords: [-105.9675, 40.5036], mile: 63.6 }
     ];
 
     let elevationChart;
