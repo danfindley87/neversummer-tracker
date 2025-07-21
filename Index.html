@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Never Summer Live Tracker (Radar Timelapse)</title>
+  <title>Never Summer Live Tracker</title>
 
   <!-- Mapbox -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
@@ -11,7 +11,7 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="config.js"></script> <!-- Load OWM_API_KEY -->
+  <script src="config.js"></script> <!-- API key -->
 
   <style>
     body, html {
@@ -164,17 +164,24 @@
 
     function updateElevationMarker(lng, lat) {
       if (!elevationChart || coursePoints.length === 0) return;
+
+      // Find closest index
       let minDist = Infinity;
       let closestIndex = 0;
-      let traveledDist = 0;
       for (let i = 0; i < coursePoints.length; i++) {
         const d = distance([lng, lat], coursePoints[i]);
-        if (i > 0) traveledDist += distance(coursePoints[i - 1], coursePoints[i]);
         if (d < minDist) {
           minDist = d;
           closestIndex = i;
         }
       }
+
+      // Calculate traveled distance up to closestIndex
+      let traveledDist = 0;
+      for (let i = 1; i <= closestIndex; i++) {
+        traveledDist += distance(coursePoints[i - 1], coursePoints[i]);
+      }
+
       const currentMile = (traveledDist / 1609.34).toFixed(1);
       const currentElev = elevationData[closestIndex].toFixed(0);
       const remainMiles = (totalMiles - currentMile).toFixed(1);
@@ -215,7 +222,8 @@
     }
 
     async function loadRadarFrames() {
-      const timestamps = Array.from({length: 6}, (_, i) => i * 10).map(m => Math.floor(Date.now()/1000) - m*60);
+      const timestamps = Array.from({length: 6}, (_, i) => i * 10)
+        .map(m => Math.floor(Date.now()/1000) - m*60);
       radarFrames = timestamps.map(ts => ({
         id: `radar-${ts}`,
         url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}&time=${ts}`
@@ -253,7 +261,12 @@
         tiles: [frame.url],
         tileSize: 256
       });
-      map.addLayer({ id: frame.id, type: 'raster', source: frame.id, paint: { 'raster-opacity': 0.7 } });
+      map.addLayer({
+        id: frame.id,
+        type: 'raster',
+        source: frame.id,
+        paint: { 'raster-opacity': 0.7 }
+      });
       radarIndex = (radarIndex + 1) % radarFrames.length;
     }
   </script>
