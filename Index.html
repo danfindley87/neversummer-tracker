@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Never Summer Live Tracker (Red Marker)</title>
+  <title>Never Summer Live Tracker (Radar Timelapse)</title>
 
   <!-- Mapbox -->
   <script src="https://api.mapbox.com/mapbox-gl-js/v3.2.0/mapbox-gl.js"></script>
@@ -11,6 +11,7 @@
 
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="config.js"></script> <!-- Load OWM_API_KEY -->
 
   <style>
     body, html {
@@ -42,6 +43,17 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
       z-index: 999;
     }
+    #radarControls {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: rgba(255, 255, 255, 0.9);
+      padding: 6px 10px;
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: Arial, sans-serif;
+      z-index: 999;
+    }
   </style>
 </head>
 <body>
@@ -50,6 +62,11 @@
       Mile: <span id="mile">0</span> | 
       Elev: <span id="elev">0</span> ft | 
       Remain: <span id="remain">0</span> mi
+    </div>
+    <div id="radarControls">
+      <input type="checkbox" id="toggleRadar"> Show Radar <br>
+      <button id="playRadar">▶ Play</button>
+      <button id="pauseRadar">⏸ Pause</button>
     </div>
   </div>
   <canvas id="elevationChart"></canvas>
@@ -74,10 +91,15 @@
     let totalMiles = 0;
     let simIndex = 0;
     let simInterval = null;
-    let simRunning = true;
+
+    let radarFrames = [];
+    let radarIndex = 0;
+    let radarInterval = null;
+    let radarOn = false;
 
     map.on('load', () => {
       initCourse();
+      setupRadarControls();
     });
 
     async function initCourse() {
@@ -126,20 +148,15 @@
         }
       });
 
-      // Start at first point
-      simIndex = 0;
-      const start = [coursePoints[0][0], coursePoints[0][1]];
-      console.log("Initial marker at:", start);
-      liveMarker.setLngLat(start).addTo(map);
-      updateElevationMarker(start[0], start[1]);
+      liveMarker.setLngLat(coursePoints[0]).addTo(map);
+      updateElevationMarker(coursePoints[0][0], coursePoints[0][1]);
 
       simInterval = setInterval(simulateRunner, 2000);
     }
 
     function simulateRunner() {
-      if (!simRunning || simIndex >= coursePoints.length) return;
-      const [lng, lat] = [coursePoints[simIndex][0], coursePoints[simIndex][1]];
-      console.log(`Runner moving to index ${simIndex}:`, [lng, lat]);
+      if (simIndex >= coursePoints.length) return;
+      const [lng, lat] = coursePoints[simIndex];
       liveMarker.setLngLat([lng, lat]);
       updateElevationMarker(lng, lat);
       simIndex += Math.floor(coursePoints.length / 100);
@@ -187,6 +204,57 @@
       const x = dLon * Math.cos((lat1 + lat2) / 2);
       const y = dLat;
       return Math.sqrt(x * x + y * y) * R;
+    }
+
+    async function setupRadarControls() {
+      document.getElementById('toggleRadar').addEventListener('change', toggleRadar);
+      document.getElementById('playRadar').addEventListener('click', startRadar);
+      document.getElementById('pauseRadar').addEventListener('click', stopRadar);
+
+      await loadRadarFrames();
+    }
+
+    async function loadRadarFrames() {
+      const timestamps = Array.from({length: 6}, (_, i) => i * 10).map(m => Math.floor(Date.now()/1000) - m*60);
+      radarFrames = timestamps.map(ts => ({
+        id: `radar-${ts}`,
+        url: `https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}&time=${ts}`
+      }));
+    }
+
+    function toggleRadar(e) {
+      radarOn = e.target.checked;
+      if (radarOn) startRadar();
+      else stopRadar();
+    }
+
+    function startRadar() {
+      if (!radarOn) return;
+      stopRadar();
+      radarInterval = setInterval(showNextRadarFrame, 1000);
+    }
+
+    function stopRadar() {
+      clearInterval(radarInterval);
+      radarFrames.forEach(f => {
+        if (map.getLayer(f.id)) map.removeLayer(f.id);
+        if (map.getSource(f.id)) map.removeSource(f.id);
+      });
+    }
+
+    function showNextRadarFrame() {
+      radarFrames.forEach(f => {
+        if (map.getLayer(f.id)) map.removeLayer(f.id);
+        if (map.getSource(f.id)) map.removeSource(f.id);
+      });
+      const frame = radarFrames[radarIndex];
+      map.addSource(frame.id, {
+        type: 'raster',
+        tiles: [frame.url],
+        tileSize: 256
+      });
+      map.addLayer({ id: frame.id, type: 'raster', source: frame.id, paint: { 'raster-opacity': 0.7 } });
+      radarIndex = (radarIndex + 1) % radarFrames.length;
     }
   </script>
 </body>
