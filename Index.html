@@ -84,6 +84,19 @@
 
     const liveMarker = new mapboxgl.Marker({ color: 'red' });
 
+    const aidStations = [
+      { name: "Michigan Ditch (mile 11.4)", coords: [-105.8797, 40.4975] },
+      { name: "Diamond Aid (mile 19.5)", coords: [-105.921469, 40.505442] },
+      { name: "Montgomery (mile 25.5)", coords: [-105.921469, 40.505442] },
+      { name: "Ruby Jewel Aid (mile 31.6)", coords: [-105.914, 40.513] },
+      { name: "Kelly Lake (mile 36.3)", coords: [-105.914, 40.513] },
+      { name: "Clear Lake 1 (40.9)", coords: [-105.95, 40.542] },
+      { name: "Clear Lake 2 (45.3)", coords: [-105.95, 40.542] },
+      { name: "Canadian Aid (mile 51.5)", coords: [-105.971943, 40.559134] },
+      { name: "Bockman Aid (mile 57.4)", coords: [-105.971943, 40.559134] },
+      { name: "Ranger Lakes Aid (63.6)", coords: [-105.97, 40.57] }
+    ];
+
     let elevationChart;
     let elevationData = [];
     let elevationLabels = [];
@@ -116,6 +129,7 @@
       }
       totalMiles = (totalDist / 1609.34).toFixed(1);
 
+      // Add course line
       map.addSource('course', { type: 'geojson', data: data });
       map.addLayer({
         id: 'course-line',
@@ -124,6 +138,27 @@
         paint: { 'line-color': '#FF4500', 'line-width': 4, 'line-blur': 1 }
       });
 
+      // Add aid stations
+      aidStations.forEach(station => {
+        new mapboxgl.Marker({ color: 'orange' })
+          .setLngLat(station.coords)
+          .setPopup(new mapboxgl.Popup().setText(station.name))
+          .addTo(map);
+      });
+
+      // Add Start Marker
+      new mapboxgl.Marker({ color: 'green' })
+        .setLngLat(coursePoints[0])
+        .setPopup(new mapboxgl.Popup().setText("Start"))
+        .addTo(map);
+
+      // Add Finish Marker
+      new mapboxgl.Marker({ color: 'black' })
+        .setLngLat(coursePoints[coursePoints.length - 1])
+        .setPopup(new mapboxgl.Popup().setText("Finish"))
+        .addTo(map);
+
+      // Elevation Chart
       const ctx = document.getElementById('elevationChart').getContext('2d');
       elevationChart = new Chart(ctx, {
         type: 'line',
@@ -148,6 +183,7 @@
         }
       });
 
+      // Runner Test Marker
       liveMarker.setLngLat(coursePoints[0]).addTo(map);
       updateElevationMarker(coursePoints[0][0], coursePoints[0][1]);
 
@@ -165,7 +201,6 @@
     function updateElevationMarker(lng, lat) {
       if (!elevationChart || coursePoints.length === 0) return;
 
-      // Find closest index
       let minDist = Infinity;
       let closestIndex = 0;
       for (let i = 0; i < coursePoints.length; i++) {
@@ -176,7 +211,6 @@
         }
       }
 
-      // Calculate traveled distance up to closestIndex
       let traveledDist = 0;
       for (let i = 1; i <= closestIndex; i++) {
         traveledDist += distance(coursePoints[i - 1], coursePoints[i]);
@@ -213,6 +247,7 @@
       return Math.sqrt(x * x + y * y) * R;
     }
 
+    // Radar
     async function setupRadarControls() {
       document.getElementById('toggleRadar').addEventListener('change', toggleRadar);
       document.getElementById('playRadar').addEventListener('click', startRadar);
@@ -244,29 +279,29 @@
 
     function stopRadar() {
       clearInterval(radarInterval);
-      radarFrames.forEach(f => {
-        if (map.getLayer(f.id)) map.removeLayer(f.id);
-        if (map.getSource(f.id)) map.removeSource(f.id);
-      });
     }
 
     function showNextRadarFrame() {
-      radarFrames.forEach(f => {
-        if (map.getLayer(f.id)) map.removeLayer(f.id);
-        if (map.getSource(f.id)) map.removeSource(f.id);
-      });
       const frame = radarFrames[radarIndex];
-      map.addSource(frame.id, {
-        type: 'raster',
-        tiles: [frame.url],
-        tileSize: 256
-      });
-      map.addLayer({
-        id: frame.id,
-        type: 'raster',
-        source: frame.id,
-        paint: { 'raster-opacity': 0.7 }
-      });
+      const layerId = 'radar-layer';
+
+      if (map.getSource(layerId)) {
+        map.getSource(layerId).tiles = [frame.url];
+        map.triggerRepaint();
+      } else {
+        map.addSource(layerId, {
+          type: 'raster',
+          tiles: [frame.url],
+          tileSize: 256
+        });
+        map.addLayer({
+          id: layerId,
+          type: 'raster',
+          source: layerId,
+          paint: { 'raster-opacity': 0.7 }
+        });
+      }
+
       radarIndex = (radarIndex + 1) % radarFrames.length;
     }
   </script>
