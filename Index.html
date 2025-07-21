@@ -43,6 +43,11 @@
       box-shadow: 0 0 5px rgba(0,0,0,0.3);
       z-index: 999;
     }
+    #lastUpdate {
+      font-size: 12px;
+      margin-top: 4px;
+      color: #333;
+    }
     #radarControls {
       position: absolute;
       bottom: 10px;
@@ -67,6 +72,7 @@
       Mile: <span id="mile">0</span> | 
       Elev: <span id="elev">0</span> ft | 
       Remain: <span id="remain">0</span> mi
+      <div id="lastUpdate">Location last updated: waiting...</div>
     </div>
     <div id="radarControls">
       <input type="checkbox" id="toggleRadar"> Show Radar <br>
@@ -109,17 +115,17 @@
       return el;
     }
 
+    // Aid stations
     const aidStations = [
-      { name: "Michigan Ditch (mile 11.4)", coords: [-105.8797, 40.4975], mile: 11.4 },
-      { name: "Diamond Aid (mile 19.5)", coords: [-105.9081, 40.5039], mile: 19.5 },
-      { name: "Montgomery (mile 25.5)", coords: [-105.9139, 40.5542], mile: 25.5 },
-      { name: "Ruby Jewel Aid (mile 31.6)", coords: [-105.9633, 40.5842], mile: 31.6 },
-      { name: "Clear Lake 1&2 (40.9 & 45.3)", coords: [-106.0022, 40.6553], mile: 40.9 },
-      { name: "Canadian Aid (mile 51.5)", coords: [-106.0081, 40.6147], mile: 51.5 },
-      { name: "Bockman Aid (mile 57.4)", coords: [-105.9717, 40.5592], mile: 57.4 },
-      { name: "Ranger Lakes Aid (63.6)", coords: [-105.9675, 40.5036], mile: 63.6 }
+      { name: "Michigan Ditch (mile 11.4)", coords: [-105.8797, 40.4975] },
+      { name: "Diamond Aid (mile 19.5)", coords: [-105.9081, 40.5039] },
+      { name: "Montgomery (mile 25.5)", coords: [-105.9139, 40.5542] },
+      { name: "Ruby Jewel Aid (mile 31.6)", coords: [-105.9633, 40.5842] },
+      { name: "Clear Lake 1&2 (40.9 & 45.3)", coords: [-106.0022, 40.6553] },
+      { name: "Canadian Aid (mile 51.5)", coords: [-106.0081, 40.6147] },
+      { name: "Bockman Aid (mile 57.4)", coords: [-105.9717, 40.5592] },
+      { name: "Ranger Lakes Aid (63.6)", coords: [-105.9675, 40.5036] }
     ];
-
 
     let elevationChart;
     let elevationData = [];
@@ -131,7 +137,7 @@
 
     const liveMarker = new mapboxgl.Marker({ element: createCustomMarker('🏃‍♂️', 'black', true) });
 
-    let courseBounds; // store bounds of the entire course
+    let courseBounds;
 
     map.on('load', () => {
       initCourse();
@@ -156,7 +162,7 @@
       totalMiles = (totalDist / 1609.34).toFixed(1);
       courseBounds = bounds;
 
-      // Add course line
+      // Course line
       map.addSource('course', { type: 'geojson', data: data });
       map.addLayer({
         id: 'course-line',
@@ -173,13 +179,12 @@
           .addTo(map);
       });
 
-      // Start marker
-      new mapboxgl.Marker({ element: createCustomMarker('🏁', 'green') })
+      // Start & Finish markers
+      new mapboxgl.Marker({ element: createCustomMarker('🏳️', 'green') })
         .setLngLat(coursePoints[0])
         .setPopup(new mapboxgl.Popup().setText("Start"))
         .addTo(map);
 
-      // Finish marker
       new mapboxgl.Marker({ element: createCustomMarker('🏁', 'black') })
         .setLngLat(coursePoints[coursePoints.length - 1])
         .setPopup(new mapboxgl.Popup().setText("Finish"))
@@ -212,8 +217,8 @@
 
       // Runner
       liveMarker.setLngLat(coursePoints[0]).addTo(map);
-      map.flyTo({ center: coursePoints[0], zoom: 13 }); // zoom to runner on load
-      updateElevationMarker(coursePoints[0][0], coursePoints[0][1]);
+      map.flyTo({ center: coursePoints[0], zoom: 13 });
+      updateElevationMarker(coursePoints[0][0], coursePoints[0][1], new Date());
 
       simInterval = setInterval(simulateRunner, 2000);
     }
@@ -222,11 +227,11 @@
       if (simIndex >= coursePoints.length) return;
       const [lng, lat] = coursePoints[simIndex];
       liveMarker.setLngLat([lng, lat]);
-      updateElevationMarker(lng, lat);
+      updateElevationMarker(lng, lat, new Date()); // simulated Garmin timestamp
       simIndex += Math.floor(coursePoints.length / 100);
     }
 
-    function updateElevationMarker(lng, lat) {
+    function updateElevationMarker(lng, lat, timestamp) {
       if (!elevationChart || coursePoints.length === 0) return;
 
       let minDist = Infinity;
@@ -251,6 +256,11 @@
       document.getElementById('mile').textContent = currentMile;
       document.getElementById('elev').textContent = currentElev;
       document.getElementById('remain').textContent = remainMiles;
+
+      // Update last update timestamp
+      if (timestamp) {
+        document.getElementById('lastUpdate').textContent = "Location last updated: " + timestamp.toLocaleTimeString();
+      }
 
       elevationChart.data.datasets[1] = {
         label: 'Current Position',
