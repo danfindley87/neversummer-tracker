@@ -264,11 +264,11 @@ elevationChart = new Chart(ctx, {
       x: {
   title: { display: true, text: 'Distance (mi)' },
   ticks: {
-    stepSize: 5,
-    callback: function(value, index, ticks) {
-      return Math.round(this.getLabelForValue(value));
-    }
+  callback: function(value, index, ticks) {
+    const miles = this.getLabelForValue(value);
+    return miles.toFixed(1); // show 1 decimal place
   }
+}
       },
       y: {
         title: { display: true, text: 'Elevation (ft)' }
