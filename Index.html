@@ -209,7 +209,7 @@
       const elevGain = (coords[i][2] - coords[i - 1][2]) * 3.28084;
       if (elevGain > 0) climb += elevGain;
     }
-    elevationLabels.push((totalDist / 1609.34).toFixed(1)); 
+    elevationLabels.push(Number((totalDist / 1609.34).toFixed(1))); 
     const elevFeet = coords[i][2] ? coords[i][2] * 3.28084 : 0;
     elevationData.push(elevFeet);
     coursePoints.push([coords[i][0], coords[i][1]]);
