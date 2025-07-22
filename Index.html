@@ -245,37 +245,39 @@
         .addTo(map);
 
       const ctx = document.getElementById('elevationChart').getContext('2d');
-      elevationChart = new Chart(ctx, {
-        type: 'line',
-        data: {
-          labels: elevationLabels,
-          datasets: [{
-            label: 'Elevation (ft)',
-            data: elevationData,
-            borderColor: 'blue',
-            fill: false,
-            pointRadius: 0
-          }]
-        },
-        options: {
-          responsive: true,
-          maintainAspectRatio: false,
-          scales: {
-            x: {
-    title: { display: true, text: 'Distance (mi)' },
-    ticks: {
-      callback: function(value, index, ticks) {
-        const miles = this.getLabelForValue(value);
-        return index % 5 === 0 ? Math.round(miles) : '';
-      }
-    }
+elevationChart = new Chart(ctx, {
+  type: 'line',
+  data: {
+    labels: elevationLabels,
+    datasets: [{
+      label: 'Elevation (ft)',
+      data: elevationData,
+      borderColor: 'blue',
+      fill: false,
+      pointRadius: 0
+    }]
   },
-  y: {
-    title: { display: true, text: 'Elevation (ft)' }
+  options: {
+    responsive: true,
+    maintainAspectRatio: false,
+    scales: {
+      x: {
+        title: { display: true, text: 'Distance (mi)' },
+        ticks: {
+          callback: function(value, index) {
+            const miles = this.getLabelForValue(value);
+            return index % 5 === 0 ? Math.round(miles) : '';
+          }
+        }
+      },
+      y: {
+        title: { display: true, text: 'Elevation (ft)' }
+      }
+    },
+    plugins: { legend: { display: false } }
   }
-},
-plugins: { legend: { display: false } }
-      });
+});
+
 
       liveMarker.setLngLat(coursePoints[0]).addTo(map);
       map.flyTo({ center: coursePoints[0], zoom: 13 });
