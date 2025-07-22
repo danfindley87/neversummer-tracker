@@ -262,18 +262,19 @@
           maintainAspectRatio: false,
           scales: {
             x: {
-  title: { display: true, text: 'Distance (mi)' },
-  ticks: {
-    stepSize: 5,
-    callback: function(value) {
-      return Math.round(value);
+    title: { display: true, text: 'Distance (mi)' },
+    ticks: {
+      callback: function(value, index, ticks) {
+        const miles = this.getLabelForValue(value);
+        return index % 5 === 0 ? Math.round(miles) : '';
+      }
     }
+  },
+  y: {
+    title: { display: true, text: 'Elevation (ft)' }
   }
 },
-            y: { title: { display: true, text: 'Elevation (ft)' } }
-          },
-          plugins: { legend: { display: false } }
-        }
+plugins: { legend: { display: false } }
       });
 
       liveMarker.setLngLat(coursePoints[0]).addTo(map);
