@@ -262,19 +262,21 @@ elevationChart = new Chart(ctx, {
     maintainAspectRatio: false,
     scales: {
       x: {
-  title: { display: true, text: 'Distance (mi)' },
-  ticks: {
-  callback: function(value, index, ticks) {
-    const miles = this.getLabelForValue(value);
-    return miles.toFixed(1); // show 1 decimal place
-  }
-}
+        title: { display: true, text: 'Distance (mi)' },
+        ticks: {
+          callback: function(value, index, ticks) {
+            const miles = this.getLabelForValue(value);
+            return miles.toFixed(1); // 1 decimal place
+          }
+        }
       },
       y: {
         title: { display: true, text: 'Elevation (ft)' }
       }
     },
-    plugins: { legend: { display: false } }
+    plugins: {
+      legend: { display: false }
+    }
   }
 });
 
