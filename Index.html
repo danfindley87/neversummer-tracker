@@ -431,22 +431,25 @@
 
     // Toggle Elevation Chart
     document.getElementById('toggleChart').addEventListener('click', () => {
-      const mapDiv = document.getElementById('map');
-      const chartDiv = document.getElementById('elevationContainer');
-      const btn = document.getElementById('toggleChart');
+  const mapDiv = document.getElementById('map');
+  const chartDiv = document.getElementById('elevationContainer');
+  const btn = document.getElementById('toggleChart');
 
-      if (chartDiv.style.height === '0px' || chartDiv.style.height === '0%') {
-        chartDiv.style.height = '30%';
-        chartDiv.style.opacity = 1;
-        mapDiv.style.height = '70%';
-        btn.textContent = 'Elevation ▼';
-      } else {
-        chartDiv.style.height = '0%';
-        chartDiv.style.opacity = 0;
-        mapDiv.style.height = '100%';
-        btn.textContent = 'Elevation ▲';
-      }
-    });
+  if (chartDiv.style.height === '0px' || chartDiv.style.height === '0%') {
+    chartDiv.style.height = '30%';
+    chartDiv.style.opacity = 1;
+    mapDiv.style.height = '70%';
+    btn.textContent = 'Elevation ▼';
+  } else {
+    chartDiv.style.height = '0%';
+    chartDiv.style.opacity = 0;
+    mapDiv.style.height = '100%';
+    btn.textContent = 'Elevation ▲';
+  }
+
+  // Force Mapbox to re-render and fill the container
+  setTimeout(() => map.resize(), 300); 
+});
   </script>
 </body>
 </html>
