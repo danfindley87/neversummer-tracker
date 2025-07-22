@@ -261,7 +261,16 @@
           responsive: true,
           maintainAspectRatio: false,
           scales: {
-            x: { title: { display: true, text: 'Distance (mi)' } },
+            x: {
+    title: { display: true, text: 'Distance (mi)' },
+    ticks: {
+      stepSize: 5,
+      callback: function(value, index, values) {
+        const label = Math.round(this.getLabelForValue(value));
+        return label % 5 === 0 ? label : '';
+      }
+    }
+  },
             y: { title: { display: true, text: 'Elevation (ft)' } }
           },
           plugins: { legend: { display: false } }
