@@ -209,7 +209,7 @@
       const elevGain = (coords[i][2] - coords[i - 1][2]) * 3.28084;
       if (elevGain > 0) climb += elevGain;
     }
-    elevationLabels.push(Math.round(totalDist / 1609.34)); // Whole numbers
+    elevationLabels.push((totalDist / 1609.34).toFixed(1)); 
     const elevFeet = coords[i][2] ? coords[i][2] * 3.28084 : 0;
     elevationData.push(elevFeet);
     coursePoints.push([coords[i][0], coords[i][1]]);
@@ -262,15 +262,15 @@ elevationChart = new Chart(ctx, {
     maintainAspectRatio: false,
     scales: {
   x: {
-    title: { display: true, text: 'Distance (mi)' },
-    ticks: {
-      stepSize: 5,  // Force grid/ticks every 5 miles
-      callback: function(value, index) {
-        const miles = this.getLabelForValue(value);
-        return Math.round(miles); // Show only whole numbers
-      }
+  title: { display: true, text: 'Distance (mi)' },
+  ticks: {
+    stepSize: 5, // Force grid/ticks every 5 miles
+    callback: function(value, index, ticks) {
+      const miles = Math.round(this.getLabelForValue(value));
+      return (miles % 5 === 0) ? miles : ''; // Only show multiples of 5
     }
-  },
+  }
+}
   y: {
     title: { display: true, text: 'Elevation (ft)' }
   }
