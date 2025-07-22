@@ -20,16 +20,37 @@
       height: 100%;
       display: flex;
       flex-direction: column;
+      overflow: hidden;
     }
     #map {
       width: 100%;
       height: 70%;
       position: relative;
+      transition: height 0.3s ease;
+    }
+    #elevationContainer {
+      position: relative;
+      width: 100%;
+      height: 30%;
+      transition: height 0.3s ease;
     }
     #elevationChart {
       width: 100%;
-      height: 30%;
+      height: 100%;
       max-height: 300px;
+    }
+    #toggleChart {
+      position: absolute;
+      top: 5px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(255,255,255,0.9);
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 4px 6px;
+      font-size: 12px;
+      box-shadow: 0 0 4px rgba(0,0,0,0.3);
     }
     #infoPanel {
       position: absolute;
@@ -98,7 +119,10 @@
       <button id="zoomCourse">🗺️ Zoom to Course</button>
     </div>
   </div>
-  <canvas id="elevationChart"></canvas>
+  <div id="elevationContainer">
+    <button id="toggleChart">▼</button>
+    <canvas id="elevationChart"></canvas>
+  </div>
 
   <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoiZmluczEyOSIsImEiOiJjbWRkYTAxcXIwMmdvMnJwc2xodjF4b3M5In0.58QcMA8Zo_BPNLORLz5Sug';
@@ -368,7 +392,7 @@
 
     function setupRadarControls() {
       const radarToggle = document.getElementById('toggleRadar');
-      radarToggle.checked = true; // ensure checked on load
+      radarToggle.checked = true;
 
       radarToggle.addEventListener('change', e => {
         updateRadarVisibility(e.target.checked);
@@ -403,6 +427,23 @@
         if (courseBounds) map.fitBounds(courseBounds, { padding: 40 });
       });
     }
+
+    // Toggle Elevation Chart
+    document.getElementById('toggleChart').addEventListener('click', () => {
+      const mapDiv = document.getElementById('map');
+      const chartDiv = document.getElementById('elevationContainer');
+      const btn = document.getElementById('toggleChart');
+
+      if (chartDiv.style.height === '0px' || chartDiv.style.height === '0%') {
+        chartDiv.style.height = '30%';
+        mapDiv.style.height = '70%';
+        btn.textContent = '▼';
+      } else {
+        chartDiv.style.height = '0%';
+        mapDiv.style.height = '100%';
+        btn.textContent = '▲';
+      }
+    });
   </script>
 </body>
 </html>
