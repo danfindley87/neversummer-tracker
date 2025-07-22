@@ -115,16 +115,19 @@
       zoom: 10
     });
 
-    let courseBounds;
-
-    // Runner marker with white background
+    // Runner marker
     const runnerIcon = document.createElement('div');
     runnerIcon.innerHTML = '🏃';
     runnerIcon.style.fontSize = '24px';
     runnerIcon.style.background = 'white';
     runnerIcon.style.borderRadius = '50%';
     runnerIcon.style.padding = '3px';
-    const liveMarker = new mapboxgl.Marker(runnerIcon).setLngLat([-106.00294, 40.50903]).addTo(map);
+    const liveMarker = new mapboxgl.Marker(runnerIcon).setLngLat([-106.00294, 40.50903]);
+
+    map.on('load', () => {
+      liveMarker.addTo(map);
+      addRadar();
+    });
 
     // Aid stations
     const aidStations = [
@@ -142,17 +145,17 @@
       const el = document.createElement('div');
       el.innerHTML = '❌';
       el.style.fontSize = '20px';
-      new mapboxgl.Marker(el).setLngLat(station.coords).setPopup(new mapboxgl.Popup().setText(station.name)).addTo(map);
+      new mapboxgl.Marker(el).setLngLat(station.coords)
+        .setPopup(new mapboxgl.Popup().setText(station.name))
+        .addTo(map);
     });
 
     // Zoom Buttons
     document.getElementById('zoomRunner').addEventListener('click', () => {
-      const runnerPos = liveMarker.getLngLat();
-      map.flyTo({ center: runnerPos, zoom: 14 });
+      map.flyTo({ center: liveMarker.getLngLat(), zoom: 14 });
     });
-
     document.getElementById('zoomCourse').addEventListener('click', () => {
-      if (courseBounds) map.fitBounds(courseBounds, { padding: 40 });
+      map.fitBounds([[-106.01, 40.48], [-105.87, 40.67]], { padding: 40 });
     });
 
     // Elevation Toggle
@@ -194,11 +197,10 @@
           id: layerId,
           type: 'raster',
           source: layerId,
-          paint: { 'raster-opacity': 0.5 }
+          paint: { 'raster-opacity': 0.6 }
         });
       }
     }
-
     function removeRadar() {
       radarLayers.forEach(id => {
         if (map.getLayer(id)) map.removeLayer(id);
@@ -208,19 +210,10 @@
     }
 
     document.getElementById('toggleRadar').addEventListener('change', (e) => {
-      if (e.target.checked) {
-        addRadar();
-      } else {
-        removeRadar();
-      }
+      if (e.target.checked) addRadar();
+      else removeRadar();
     });
-
     document.getElementById('refreshRadar').addEventListener('click', addRadar);
-
-    map.on('load', () => {
-      addRadar();
-      // Fit map to course bounds if you have them
-    });
   </script>
 </body>
 </html>
