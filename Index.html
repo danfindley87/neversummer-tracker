@@ -193,43 +193,33 @@
     });
 
     async function fetchGarminLocation() {
+  const CORS_PROXY = "https://corsproxy.io/?";
+  const GARMIN_FEED = "https://share.garmin.com/Feed/Share/DanFindley";
+
   try {
-    const response = await fetch(`${GARMIN_FEED}?d=${Date.now()}`);
+    const response = await fetch(`${CORS_PROXY}${GARMIN_FEED}`);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
     const kmlText = await response.text();
+    console.log("Garmin KML fetched:", kmlText.substring(0, 200));
 
-    // Debug log
-    console.log("KML raw data:", kmlText.substring(0, 500));
-
+    // Parse the KML to extract the coordinates (Placemark > Point > coordinates)
     const parser = new DOMParser();
-    const kmlDoc = parser.parseFromString(kmlText, "application/xml");
-
-    // Find all Placemark elements
-    const placemarks = kmlDoc.getElementsByTagName("Placemark");
-    if (placemarks.length === 0) {
-      console.warn("No placemarks found in KML.");
-      return;
+    const xmlDoc = parser.parseFromString(kmlText, "application/xml");
+    const coordElement = xmlDoc.querySelector("coordinates");
+    if (!coordElement) {
+      throw new Error("No coordinates found in KML");
     }
 
-    // Get the last Placemark (latest location)
-    const latest = placemarks[placemarks.length - 1];
+    const [lng, lat] = coordElement.textContent.trim().split(",").map(Number);
+    console.log(`Garmin coordinates: ${lat}, ${lng}`);
 
-    // Extract coordinates
-    const coordText = latest.getElementsByTagName("coordinates")[0].textContent.trim();
-    const [lon, lat] = coordText.split(",").map(Number);
-
-    // Extract timestamp
-    const whenElem = latest.getElementsByTagName("when");
-    const time = whenElem.length > 0 ? whenElem[0].textContent : null;
-    const timestamp = time ? new Date(time) : new Date();
-
-    console.log("Latest Garmin Location:", { lat, lon, time });
-
-    // Update map and chart
-    liveMarker.setLngLat([lon, lat]).addTo(map);
-    updateElevationMarker(lon, lat, timestamp);
-
-  } catch (err) {
-    console.error("Garmin KML fetch error:", err);
+    // Update runner marker
+    updateElevationMarker(lng, lat, new Date());
+    liveMarker.setLngLat([lng, lat]);
+  } catch (error) {
+    console.error("Garmin KML fetch error:", error);
   }
 }
 
