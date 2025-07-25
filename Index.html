@@ -98,9 +98,6 @@
       display: block;
       margin-top: 4px;
     }
-    #map, #elevationContainer {
-      transition: height 0.4s ease-in-out, opacity 0.4s ease-in-out;
-    }
   </style>
 </head>
 <body>
@@ -133,6 +130,7 @@
 
   <script>
     mapboxgl.accessToken = 'pk.eyJ1IjoiZmluczEyOSIsImEiOiJjbWRkYTAxcXIwMmdvMnJwc2xodjF4b3M5In0.58QcMA8Zo_BPNLORLz5Sug';
+    const GARMIN_FEED = "https://share.garmin.com/Feed/Share/DanFindley";
 
     const map = new mapboxgl.Map({
       container: 'map',
@@ -177,14 +175,11 @@
     let elevationLabels = [];
     let coursePoints = [];
     let totalMiles = 0;
-    let simIndex = 0;
-    let simInterval = null;
     let totalClimb = 0;
     const liveMarker = new mapboxgl.Marker({ element: createCustomMarker('🏃‍♂️', 'black', true) });
     let courseBounds;
     let startTime = null;
     let lastUpdateData = { mile: 0, time: null };
-
     let radarStrength = 10;
     const maxRadarLayers = 20;
 
@@ -193,31 +188,56 @@
       preloadRadarLayers();
       setupRadarControls();
       setupZoomControls();
+      fetchGarminLocation();
+      setInterval(fetchGarminLocation, 300000); // every 5 mins
     });
 
-    async function initCourse() {
-  const data = await fetch('course.geojson').then(res => res.json());
-  const coords = data.features[0].geometry.coordinates;
+    async function fetchGarminLocation() {
+      try {
+        const response = await fetch(`${GARMIN_FEED}?d=${Date.now()}`);
+        const text = await response.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, "text/xml");
+        const trkpts = xmlDoc.getElementsByTagName("trkpt");
 
-  let totalDist = 0;
-  let climb = 0;
-  const bounds = new mapboxgl.LngLatBounds();
-  for (let i = 0; i < coords.length; i++) {
-    bounds.extend(coords[i]);
-    if (i > 0) {
-      totalDist += distance(coords[i - 1], coords[i]);
-      const elevGain = (coords[i][2] - coords[i - 1][2]) * 3.28084;
-      if (elevGain > 0) climb += elevGain;
+        if (trkpts.length > 0) {
+          const latest = trkpts[trkpts.length - 1];
+          const lat = parseFloat(latest.getAttribute("lat"));
+          const lon = parseFloat(latest.getAttribute("lon"));
+          const time = latest.getElementsByTagName("time")[0].textContent;
+          const timestamp = new Date(time);
+
+          liveMarker.setLngLat([lon, lat]).addTo(map);
+          updateElevationMarker(lon, lat, timestamp);
+        }
+      } catch (err) {
+        console.error("Garmin fetch error:", err);
+      }
     }
-    elevationLabels.push(Number((totalDist / 1609.34).toFixed(1))); 
-    const elevFeet = coords[i][2] ? coords[i][2] * 3.28084 : 0;
-    elevationData.push(elevFeet);
-    coursePoints.push([coords[i][0], coords[i][1]]);
-  }
-  totalClimb = Math.round(climb);
-  totalMiles = (totalDist / 1609.34).toFixed(1);
-  courseBounds = bounds;
 
+    async function initCourse() {
+      const data = await fetch('course.geojson').then(res => res.json());
+      const coords = data.features[0].geometry.coordinates;
+      let totalDist = 0;
+      let climb = 0;
+      const bounds = new mapboxgl.LngLatBounds();
+
+      for (let i = 0; i < coords.length; i++) {
+        bounds.extend(coords[i]);
+        if (i > 0) {
+          totalDist += distance(coords[i - 1], coords[i]);
+          const elevGain = (coords[i][2] - coords[i - 1][2]) * 3.28084;
+          if (elevGain > 0) climb += elevGain;
+        }
+        elevationLabels.push(Number((totalDist / 1609.34).toFixed(1)));
+        const elevFeet = coords[i][2] ? coords[i][2] * 3.28084 : 0;
+        elevationData.push(elevFeet);
+        coursePoints.push([coords[i][0], coords[i][1]]);
+      }
+
+      totalClimb = Math.round(climb);
+      totalMiles = (totalDist / 1609.34).toFixed(1);
+      courseBounds = bounds;
 
       map.addSource('course', { type: 'geojson', data: data });
       map.addLayer({
@@ -245,61 +265,43 @@
         .addTo(map);
 
       const ctx = document.getElementById('elevationChart').getContext('2d');
-elevationChart = new Chart(ctx, {
-  type: 'line',
-  data: {
-    labels: elevationLabels,
-    datasets: [{
-      label: 'Elevation (ft)',
-      data: elevationData,
-      borderColor: 'blue',
-      fill: false,
-      pointRadius: 0
-    }]
-  },
-  options: {
-    responsive: true,
-    maintainAspectRatio: false,
-    scales: {
-      x: {
-        title: { display: true, text: 'Distance (mi)' },
-        ticks: {
-          callback: function(value, index, ticks) {
-            const miles = this.getLabelForValue(value);
-            return miles.toFixed(1); // 1 decimal place
-          }
+      elevationChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels: elevationLabels,
+          datasets: [{
+            label: 'Elevation (ft)',
+            data: elevationData,
+            borderColor: 'blue',
+            fill: false,
+            pointRadius: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          scales: {
+            x: {
+              title: { display: true, text: 'Distance (mi)' },
+              ticks: {
+                callback: function(value) {
+                  return this.getLabelForValue(value).toFixed(1);
+                }
+              }
+            },
+            y: {
+              title: { display: true, text: 'Elevation (ft)' }
+            }
+          },
+          plugins: { legend: { display: false } }
         }
-      },
-      y: {
-        title: { display: true, text: 'Elevation (ft)' }
-      }
-    },
-    plugins: {
-      legend: { display: false }
-    }
-  }
-});
-
-
-      liveMarker.setLngLat(coursePoints[0]).addTo(map);
-      map.flyTo({ center: coursePoints[0], zoom: 13 });
-      updateElevationMarker(coursePoints[0][0], coursePoints[0][1], new Date());
-
-      simInterval = setInterval(simulateRunner, 2000);
-    }
-
-    function simulateRunner() {
-      if (simIndex >= coursePoints.length) return;
-      const [lng, lat] = coursePoints[simIndex];
-      liveMarker.setLngLat([lng, lat]);
-      updateElevationMarker(lng, lat, new Date());
-      simIndex += Math.floor(Math.random() * 4 + 2);
+      });
     }
 
     function updateElevationMarker(lng, lat, timestamp) {
       if (!startTime) startTime = timestamp;
-      let minDist = Infinity;
       let closestIndex = 0;
+      let minDist = Infinity;
       for (let i = 0; i < coursePoints.length; i++) {
         const d = distance([lng, lat], coursePoints[i]);
         if (d < minDist) {
@@ -380,7 +382,6 @@ elevationChart = new Chart(ctx, {
       return Math.sqrt(x * x + y * y) * R;
     }
 
-    // Radar Preload
     function preloadRadarLayers() {
       for (let i = 0; i < maxRadarLayers; i++) {
         const layerId = `radar-layer-${i}`;
@@ -411,15 +412,13 @@ elevationChart = new Chart(ctx, {
     function setupRadarControls() {
       const radarToggle = document.getElementById('toggleRadar');
       radarToggle.checked = true;
-
       radarToggle.addEventListener('change', e => {
         updateRadarVisibility(e.target.checked);
       });
 
       document.getElementById('refreshRadar').addEventListener('click', () => {
         for (let i = 0; i < maxRadarLayers; i++) {
-          const src = map.getSource(`radar-layer-${i}`);
-          if (src) {
+          if (map.getLayer(`radar-layer-${i}`)) {
             map.removeLayer(`radar-layer-${i}`);
             map.removeSource(`radar-layer-${i}`);
           }
@@ -440,33 +439,29 @@ elevationChart = new Chart(ctx, {
         const runnerPos = liveMarker.getLngLat();
         map.flyTo({ center: runnerPos, zoom: 14 });
       });
-
       document.getElementById('zoomCourse').addEventListener('click', () => {
         if (courseBounds) map.fitBounds(courseBounds, { padding: 40 });
       });
     }
 
-    // Toggle Elevation Chart
     document.getElementById('toggleChart').addEventListener('click', () => {
-  const mapDiv = document.getElementById('map');
-  const chartDiv = document.getElementById('elevationContainer');
-  const btn = document.getElementById('toggleChart');
+      const mapDiv = document.getElementById('map');
+      const chartDiv = document.getElementById('elevationContainer');
+      const btn = document.getElementById('toggleChart');
 
-  if (chartDiv.style.height === '0px' || chartDiv.style.height === '0%') {
-    chartDiv.style.height = '30%';
-    chartDiv.style.opacity = 1;
-    mapDiv.style.height = '70%';
-    btn.textContent = 'Elevation ▼';
-  } else {
-    chartDiv.style.height = '0%';
-    chartDiv.style.opacity = 0;
-    mapDiv.style.height = '100%';
-    btn.textContent = 'Elevation ▲';
-  }
-
-  // Force Mapbox to re-render and fill the container
-  setTimeout(() => map.resize(), 400); 
-});
+      if (chartDiv.style.height === '0px' || chartDiv.style.height === '0%') {
+        chartDiv.style.height = '30%';
+        chartDiv.style.opacity = 1;
+        mapDiv.style.height = '70%';
+        btn.textContent = 'Elevation ▼';
+      } else {
+        chartDiv.style.height = '0%';
+        chartDiv.style.opacity = 0;
+        mapDiv.style.height = '100%';
+        btn.textContent = 'Elevation ▲';
+      }
+      setTimeout(() => map.resize(), 400);
+    });
   </script>
 </body>
 </html>
