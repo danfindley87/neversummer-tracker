@@ -193,27 +193,46 @@
     });
 
     async function fetchGarminLocation() {
-      try {
-        const response = await fetch(`${GARMIN_FEED}?d=${Date.now()}`);
-        const text = await response.text();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(text, "text/xml");
-        const trkpts = xmlDoc.getElementsByTagName("trkpt");
+  try {
+    const response = await fetch(`${GARMIN_FEED}?d=${Date.now()}`);
+    const kmlText = await response.text();
 
-        if (trkpts.length > 0) {
-          const latest = trkpts[trkpts.length - 1];
-          const lat = parseFloat(latest.getAttribute("lat"));
-          const lon = parseFloat(latest.getAttribute("lon"));
-          const time = latest.getElementsByTagName("time")[0].textContent;
-          const timestamp = new Date(time);
+    // Debug log
+    console.log("KML raw data:", kmlText.substring(0, 500));
 
-          liveMarker.setLngLat([lon, lat]).addTo(map);
-          updateElevationMarker(lon, lat, timestamp);
-        }
-      } catch (err) {
-        console.error("Garmin fetch error:", err);
-      }
+    const parser = new DOMParser();
+    const kmlDoc = parser.parseFromString(kmlText, "application/xml");
+
+    // Find all Placemark elements
+    const placemarks = kmlDoc.getElementsByTagName("Placemark");
+    if (placemarks.length === 0) {
+      console.warn("No placemarks found in KML.");
+      return;
     }
+
+    // Get the last Placemark (latest location)
+    const latest = placemarks[placemarks.length - 1];
+
+    // Extract coordinates
+    const coordText = latest.getElementsByTagName("coordinates")[0].textContent.trim();
+    const [lon, lat] = coordText.split(",").map(Number);
+
+    // Extract timestamp
+    const whenElem = latest.getElementsByTagName("when");
+    const time = whenElem.length > 0 ? whenElem[0].textContent : null;
+    const timestamp = time ? new Date(time) : new Date();
+
+    console.log("Latest Garmin Location:", { lat, lon, time });
+
+    // Update map and chart
+    liveMarker.setLngLat([lon, lat]).addTo(map);
+    updateElevationMarker(lon, lat, timestamp);
+
+  } catch (err) {
+    console.error("Garmin KML fetch error:", err);
+  }
+}
+
 
     async function initCourse() {
       const data = await fetch('course.geojson').then(res => res.json());
