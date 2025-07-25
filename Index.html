@@ -192,36 +192,33 @@
       setInterval(fetchGarminLocation, 120000); // every 2 mins
     });
 
-    async function fetchGarminLocation() {
+    
+async function fetchGarminLocation() {
   const CORS_PROXY = "https://corsproxy.io/?";
   const GARMIN_FEED = "https://share.garmin.com/Feed/Share/DanFindley";
 
   try {
     const response = await fetch(`${CORS_PROXY}${GARMIN_FEED}`);
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
-    }
+    if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+
     const kmlText = await response.text();
     console.log("Garmin KML fetched:", kmlText.substring(0, 200));
 
-    // Parse the KML to extract the coordinates (Placemark > Point > coordinates)
     const parser = new DOMParser();
     const xmlDoc = parser.parseFromString(kmlText, "application/xml");
     const coordElement = xmlDoc.querySelector("coordinates");
-    if (!coordElement) {
-      throw new Error("No coordinates found in KML");
-    }
+    if (!coordElement) throw new Error("No coordinates found in KML");
 
     const [lng, lat] = coordElement.textContent.trim().split(",").map(Number);
     console.log(`Garmin coordinates: ${lat}, ${lng}`);
 
-    // Update runner marker
+    liveMarker.setLngLat([lng, lat]).addTo(map);
     updateElevationMarker(lng, lat, new Date());
-    liveMarker.setLngLat([lng, lat]);
   } catch (error) {
     console.error("Garmin KML fetch error:", error);
   }
 }
+
 
 
     async function initCourse() {
